@@ -16,6 +16,8 @@ import settings from '../../settings.js';
 import { serverProxy } from './agent_proxy.js';
 import { Task } from './tasks/tasks.js';
 import { say } from './speak.js';
+import process from 'process';
+import { MCPClient } from './mcp/mcp_client.js';
 
 export class Agent {
     async start(profile_fp, load_mem=false, init_message=null, count_id=0, task_path=null, task_id=null) {
@@ -27,8 +29,8 @@ export class Agent {
         
         console.log('Starting agent initialization with profile:', profile_fp);
 
-        
-        
+
+
         // Initialize components with more detailed error handling
         console.log('Initializing action manager...');
         this.actions = new ActionManager(this);
@@ -64,7 +66,9 @@ export class Agent {
         this.task = new Task(this, task_path, task_id, taskStart);
         this.blocked_actions = settings.blocked_actions.concat(this.task.blocked_actions || []);
         blacklistCommands(this.blocked_actions);
-
+        console.log('Initializing MCP client...');
+        this.mcp_client = new MCPClient(this);
+        await this.mcp_client.init();
         serverProxy.connect(this);
 
         console.log(this.name, 'logging into minecraft...');
@@ -72,7 +76,7 @@ export class Agent {
 
         initModes(this);
 
-        
+
 
         this.bot.on('login', () => {
             console.log(this.name, 'logged in!');
@@ -98,10 +102,10 @@ export class Agent {
                 
                 console.log(`${this.name} spawned.`);
                 this.clearBotLogs();
-              
+
                 this._setupEventHandlers(save_data, init_message);
                 this.startEvents();
-              
+
                 if (!load_mem) {
                     if (task_path !== null) {
                         this.task.initBotTask();
@@ -110,7 +114,7 @@ export class Agent {
 
                 await new Promise((resolve) => setTimeout(resolve, 10000));
                 this.checkAllPlayersPresent();
-              
+
                 console.log('Initializing vision intepreter...');
                 this.vision_interpreter = new VisionInterpreter(this, settings.allow_vision);
 
@@ -142,7 +146,7 @@ export class Agent {
                 console.log(this.name, 'received message from', username, ':', message);
 
                 if (convoManager.isOtherAgent(username)) {
-                    console.warn('received whisper from other bot??')
+                    console.warn('received whisper from other bot??');
                 }
                 else {
                     let translation = await handleEnglishTranslation(message);
@@ -294,7 +298,7 @@ export class Agent {
             console.log(`${this.name} full response to ${source}: ""${res}""`);
 
             if (res.trim().length === 0) {
-                console.warn('no response')
+                console.warn('no response');
                 break; // empty response ends loop
             }
 
@@ -306,7 +310,7 @@ export class Agent {
                 
                 if (!commandExists(command_name)) {
                     this.history.add('system', `Command ${command_name} does not exist.`);
-                    console.warn('Agent hallucinated command:', command_name)
+                    console.warn('Agent hallucinated command:', command_name);
                     continue;
                 }
 
@@ -420,7 +424,7 @@ export class Agent {
             console.error('Error event!', err);
         });
         this.bot.on('end', (reason) => {
-            console.warn('Bot disconnected! Killing agent process.', reason)
+            console.warn('Bot disconnected! Killing agent process.', reason);
             this.cleanKill('Bot disconnected! Killing agent process.');
         });
         this.bot.on('death', () => {
@@ -487,6 +491,9 @@ export class Agent {
         this.history.add('system', msg);
         this.bot.chat(code > 1 ? 'Restarting.': 'Exiting.');
         this.history.save();
+        if (this.mcp_client)
+            this.mcp_client.cleanup();
+
         process.exit(code);
     }
     async checkTaskDone() {
@@ -503,6 +510,9 @@ export class Agent {
     }
 
     killAll() {
+        if (this.mcp_client)
+            this.mcp_client.cleanup();
+
         serverProxy.shutdown();
     }
 }
