@@ -1,6 +1,6 @@
 const settings = {
     "minecraft_version": "1.20.4", // supports up to 1.21.1
-    "host": "127.0.0.1", // or "localhost", "your.ip.address.here"
+    "host": "192.168.23.45", // or "localhost", "your.ip.address.here"
     "port": 55916,
     "auth": "offline", // or "microsoft"
 
@@ -12,10 +12,10 @@ const settings = {
     // the base profile is shared by all bots for default prompts/examples/modes
     "base_profile": "./profiles/defaults/survival.json", // also see creative.json, god_mode.json
     "profiles": [
-        "./andy.json",
+        // "./andy.json",
         // "./profiles/gpt.json",
         // "./profiles/claude.json",
-        // "./profiles/gemini.json",
+         "./profiles/gemini.json",
         // "./profiles/llama.json",
         // "./profiles/qwen.json",
         // "./profiles/grok.json",
